@@ -14,6 +14,8 @@
 #define HIGH_PRIO     (tskIDLE_PRIORITY + 3)
 #define STACK_SIZE    configMINIMAL_STACK_SIZE
 
+uint64_t t1, t2;
+
 SemaphoreHandle_t shared_sem;
 volatile bool high_ran = false;
 
@@ -105,16 +107,19 @@ void both_busy_busy()
 {
     TaskHandle_t first_task;
     TaskHandle_t second_task;
+
+    t1 = 0;
+    t2 = 0;
     xTaskCreate(busy_busy, "first", STACK_SIZE, NULL, MED_PRIO, &first_task);
     xTaskCreate(busy_busy, "second", STACK_SIZE, NULL, MED_PRIO, &second_task);
 
     vTaskDelay(pdMS_TO_TICKS(4000));
 
-    configRUN_TIME_COUNTER_TYPE runtime_first = ulTaskGetRunTimeCounter(first_task);
-    configRUN_TIME_COUNTER_TYPE runtime_second = ulTaskGetRunTimeCounter(second_task);
+    t1 = ulTaskGetRunTimeCounter(first_task);
+    t2 = ulTaskGetRunTimeCounter(second_task);
 
-    printf("first runtime: %d\n", runtime_first);
-    printf("second runtime: %d\n",runtime_second);
+    printf("first runtime: %llu\n", t1);
+    printf("second runtime: %llu\n", t2);
 
     // Expected Behavior: approx equal time ran
 
@@ -127,17 +132,19 @@ void both_busy_yield()
 {
     TaskHandle_t first_task;
     TaskHandle_t second_task;
+    t1 = 0;
+    t2 = 0;
     
     xTaskCreate(busy_yield, "first", STACK_SIZE, NULL, MED_PRIO, &first_task);
     xTaskCreate(busy_yield, "second", STACK_SIZE, NULL, MED_PRIO, &second_task);
 
     vTaskDelay(pdMS_TO_TICKS(4000));
     
-    configRUN_TIME_COUNTER_TYPE runtime_first_1 = ulTaskGetRunTimeCounter(first_task);
-    configRUN_TIME_COUNTER_TYPE runtime_second_1 = ulTaskGetRunTimeCounter(second_task);
+    t1 = ulTaskGetRunTimeCounter(first_task);
+    t2 = ulTaskGetRunTimeCounter(second_task);
 
-    printf("first runtime: %d\n",runtime_first_1);
-    printf("second runtime: %d\n",runtime_second_1);
+    printf("first runtime: %llu\n", t1);
+    printf("second runtime: %llu\n", t2);
     
     // Expected Behavior: approx equal time ran
 
@@ -149,17 +156,19 @@ void thread1_busy_thread2_yield()
 {
     TaskHandle_t first_task;
     TaskHandle_t second_task;
+    t1 = 0;
+    t2 = 0;
 
     xTaskCreate(busy_busy, "first", STACK_SIZE, NULL, MED_PRIO, &first_task);
     xTaskCreate(busy_yield, "second", STACK_SIZE, NULL, MED_PRIO, &second_task);
 
     vTaskDelay(pdMS_TO_TICKS(4000));
 
-    configRUN_TIME_COUNTER_TYPE runtime_first_2 = ulTaskGetRunTimeCounter(first_task);
-    configRUN_TIME_COUNTER_TYPE runtime_second_2 = ulTaskGetRunTimeCounter(second_task);
+    t1 = ulTaskGetRunTimeCounter(first_task);
+    t2 = ulTaskGetRunTimeCounter(second_task);
 
-    printf("first runtime: %d\n",runtime_first_2);
-    printf("second runtime: %d\n", runtime_second_2);
+    printf("first runtime: %llu\n", t1);
+    printf("second runtime: %llu\n", t2);
 
     // Expected Behavior: busy_busy hogs processor time
     
