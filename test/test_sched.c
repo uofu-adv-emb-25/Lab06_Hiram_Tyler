@@ -122,6 +122,8 @@ void both_busy_busy()
     printf("second runtime: %llu\n", t2);
 
     // Expected Behavior: approx equal time ran
+    TEST_ASSERT(t1 > (t1+t2)*0.4 && t1 < (t1+t2)*0.6); // t1 between 40 and 60%
+    TEST_ASSERT(t2 > (t1+t2)*0.4 && t2 < (t1+t2)*0.6); // t2 between 40 and 60%
 
     vTaskDelete(first_task);
     vTaskDelete(second_task);
@@ -145,8 +147,11 @@ void both_busy_yield()
 
     printf("first runtime: %llu\n", t1);
     printf("second runtime: %llu\n", t2);
-    
+
     // Expected Behavior: approx equal time ran
+    TEST_ASSERT(t1 > (t1+t2)*0.4 && t1 < (t1+t2)*0.6); // t1 between 40 and 60%
+    TEST_ASSERT(t2 > (t1+t2)*0.4 && t2 < (t1+t2)*0.6); // t2 between 40 and 60%
+
 
     vTaskDelete(first_task);
     vTaskDelete(second_task);
@@ -171,6 +176,8 @@ void thread1_busy_thread2_yield()
     printf("second runtime: %llu\n", t2);
 
     // Expected Behavior: busy_busy hogs processor time
+    TEST_ASSERT(t1 > (t1+t2)*0.9);
+    TEST_ASSERT(t2 < (t1+t2)*0.1);
     
     vTaskDelete(first_task);
     vTaskDelete(second_task);    
@@ -178,16 +185,88 @@ void thread1_busy_thread2_yield()
 
 void diff_prior_both_busy_high1()
 {
+    TaskHandle_t first_task;
+    TaskHandle_t second_task;
+    t1 = 0;
+    t2 = 0;
+
+    xTaskCreate(busy_busy, "first", STACK_SIZE, NULL, HIGH_PRIO, &first_task);
+        
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    xTaskCreate(busy_busy, "second", STACK_SIZE, NULL, LOW_PRIO, &second_task);
+
+    vTaskDelay(pdMS_TO_TICKS(4000));
+
+    t1 = ulTaskGetRunTimeCounter(first_task);
+    t2 = ulTaskGetRunTimeCounter(second_task);
+
+    printf("first runtime: %llu\n", t1);
+    printf("second runtime: %llu\n", t2);
+
     // Expected Behavior: high priority hogs processor time (low priority does not get scheduled)
+    TEST_ASSERT(t1 > (t1+t2)*0.9);
+    TEST_ASSERT(t2 == 0);
+
+    vTaskDelete(first_task);
+    vTaskDelete(second_task);    
 }
 
 void diff_prior_both_busy_low1()
 {
+    TaskHandle_t first_task;
+    TaskHandle_t second_task;
+    t1 = 0;
+    t2 = 0;
+
+    xTaskCreate(busy_busy, "first", STACK_SIZE, NULL, LOW_PRIO, &first_task);
+
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    xTaskCreate(busy_busy, "second", STACK_SIZE, NULL, HIGH_PRIO, &second_task);
+
+    vTaskDelay(pdMS_TO_TICKS(4000));
+
+    t1 = ulTaskGetRunTimeCounter(first_task);
+    t2 = ulTaskGetRunTimeCounter(second_task);
+
+    printf("first runtime: %llu\n", t1);
+    printf("second runtime: %llu\n", t2);
+
     // Expected behavior: high priority hogs processor time
+    TEST_ASSERT(t1 < (t1+t2)*0.1);
+    TEST_ASSERT(t2 > (t1+t2)*0.9);
+
+    vTaskDelete(first_task);
+    vTaskDelete(second_task);    
 }
 void diff_prior_both_yield()
 {
+    TaskHandle_t first_task;
+    TaskHandle_t second_task;
+    t1 = 0;
+    t2 = 0;
+
+    xTaskCreate(busy_yield, "first", STACK_SIZE, NULL, HIGH_PRIO, &first_task);
+
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    xTaskCreate(busy_yield, "second", STACK_SIZE, NULL, LOW_PRIO, &second_task);
+
+    vTaskDelay(pdMS_TO_TICKS(4000));
+
+    t1 = ulTaskGetRunTimeCounter(first_task);
+    t2 = ulTaskGetRunTimeCounter(second_task);
+
+    printf("first runtime: %llu\n", t1);
+    printf("second runtime: %llu\n", t2);
+
     // Expected behavior: high priority hogs processor time (low priority does not run)    
+    TEST_ASSERT(t1 > (t1+t2)*0.9);
+    TEST_ASSERT(t2 == 0);
+
+    vTaskDelete(first_task);
+    vTaskDelete(second_task); 
 }
 
 void runner_thread(__unused void *args)
@@ -200,9 +279,9 @@ void runner_thread(__unused void *args)
         RUN_TEST(both_busy_busy);
         RUN_TEST(both_busy_yield);
         RUN_TEST(thread1_busy_thread2_yield);
-        // RUN_TEST(diff_prior_both_busy_high1);
-        // RUN_TEST(diff_prior_both_busy_low1);
-        // RUN_TEST(diff_prior_both_yield);
+        RUN_TEST(diff_prior_both_busy_high1);
+        RUN_TEST(diff_prior_both_busy_low1);
+        RUN_TEST(diff_prior_both_yield);
         UNITY_END();
         sleep_ms(10000);
     }
