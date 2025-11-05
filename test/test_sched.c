@@ -14,7 +14,7 @@
 #define HIGH_PRIO     (tskIDLE_PRIORITY + 3)
 #define STACK_SIZE    configMINIMAL_STACK_SIZE
 
-uint64_t t1, t2;
+uint64_t t1, t2, t3;
 
 SemaphoreHandle_t shared_sem;
 volatile bool high_ran = false;
@@ -80,7 +80,13 @@ void test_priority_inversion(void)
     // Let the scenario play out
     vTaskDelay(pdMS_TO_TICKS(4000));
 
-    TEST_ASSERT_EQUAL(false, high_ran); // should not have run due to inversion
+    t1 = ulTaskGetRunTimeCounter(low_task);
+    t2 = ulTaskGetRunTimeCounter(medium_task);
+    t3 = ulTaskGetRunTimeCounter(high_task);
+
+    TEST_ASSERT(t1 < (t1+t2+t3)*.1); // t1 less than 10%
+    TEST_ASSERT(t2 < (t1+t2+t3)*.1); // t2 less than 10%
+    TEST_ASSERT(t3 > (t1+t2+t3)*.8); // t3 greater than 80%
 
     vSemaphoreDelete(shared_sem);
 }
